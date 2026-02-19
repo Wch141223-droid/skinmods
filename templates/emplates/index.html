@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SkinMods</title>
+</head>
+<body>
+<h1>SkinMods</h1>
+<ul>
+{% for skin in skins %}
+<li><img src="{{ url_for('static', filename='skins/' ~ skin) }}" width="64"></li>
+{% endfor %}
+</ul>
+</body>
+</html>
