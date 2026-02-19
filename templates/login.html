@@ -1,16 +1,43 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>登录</title>
+    <meta charset="UTF-8">
+    <title>SkinMods</title>
 </head>
 <body>
-<h1>登录</h1>
-<form method="POST" action="/login">
-  <label>邮箱: <input type="email" name="email" required></label><br>
-  <label>密码: <input type="password" name="password" required></label><br>
-  <button type="submit">登录</button>
-</form>
-<p>还没有账号？ <a href="/register">注册</a></p>
+    {% if current_user.is_authenticated %}
+        <p>欢迎, {{ current_user.username }} | <a href="{{ url_for('logout') }}">退出登录</a></p>
+        <h2>上传皮肤</h2>
+        <form action="{{ url_for('upload_skin') }}" method="post" enctype="multipart/form-data">
+            <input type="file" name="skin" required>
+            <button type="submit">上传</button>
+        </form>
+
+        <h2>发表评论</h2>
+        <form action="{{ url_for('comment') }}" method="post">
+            <textarea name="content" rows="3" required></textarea>
+            <button type="submit">提交评论</button>
+        </form>
+    {% else %}
+        <p><a href="{{ url_for('login') }}">登录</a> | <a href="{{ url_for('register') }}">注册</a></p>
+    {% endif %}
+
+    <h2>评论区</h2>
+    {% for c in comments %}
+        <div>
+            <strong>{{ c.username }}</strong>: {{ c.content }}
+        </div>
+    {% else %}
+        <p>暂时没有评论</p>
+    {% endfor %}
+
+    <h2>已上传皮肤</h2>
+    <div>
+        {% for file in os.listdir('static/skins') %}
+            <img src="{{ url_for('skins', filename=file) }}" alt="{{ file }}" width="100">
+        {% else %}
+            <p>还没有上传皮肤</p>
+        {% endfor %}
+    </div>
 </body>
 </html>
