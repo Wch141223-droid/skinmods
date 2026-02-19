@@ -1,77 +1,119 @@
-from flask import Flask, request, redirect, url_for, send_from_directory, jsonify
 import os
+from flask import Flask, render_template, request, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_mail import Mail, Message
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'static/skins'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.secret_key = os.environ.get("SECRET_KEY")
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///skinmods.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'static/skins'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get("EMAIL_USER")
+app.config['MAIL_PASSWORD'] = os.environ.get("EMAIL_PASS")
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+db = SQLAlchemy(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+mail = Mail(app)
 
-@app.route('/', methods=['GET'])
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True)
+    password = db.Column(db.String(150))
+
+class Skin(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(300))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    skin_id = db.Column(db.Integer, db.ForeignKey('skin.id'))
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+@app.route('/')
 def index():
-    skins = os.listdir(app.config['UPLOAD_FOLDER'])
-    html_skins = ''.join(f'<li><img src="/skins/{skin}" width="100"> {skin}</li>' for skin in skins)
-    html = f"""
-    <html>
-    <head>
-        <title>Skin Mods</title>
-        <style>
-            body {{ font-family: Arial; }}
-            #drop-area {{
-                border: 2px dashed #ccc;
-                padding: 20px;
-                width: 300px;
-                text-align: center;
-            }}
-        </style>
-    </head>
-    <body>
-        <h1>欢迎来到 Skin Mods!</h1>
-        <div id="drop-area">拖拽文件到这里上传</div>
-        <ul id="skins-list">{html_skins}</ul>
-        <script>
-            const dropArea = document.getElementById('drop-area');
-            dropArea.addEventListener('dragover', e => e.preventDefault());
-            dropArea.addEventListener('drop', e => {{
-                e.preventDefault();
-                const files = e.dataTransfer.files;
-                const formData = new FormData();
-                for (let i = 0; i < files.length; i++) {{
-                    formData.append('file', files[i]);
-                }}
-                fetch('/upload', {{
-                    method: 'POST',
-                    body: formData
-                }}).then(() => location.reload());
-            }});
-        </script>
-    </body>
-    </html>
-    """
-    return html
+    skins = Skin.query.all()
+    comments = Comment.query.all()
+    return render_template('index.html', skins=skins, comments=comments)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        if User.query.filter_by(email=email).first():
+            flash('邮箱已注册')
+            return redirect(url_for('register'))
+        new_user = User(email=email, password=generate_password_hash(password, method='sha256'))
+        db.session.add(new_user)
+        db.session.commit()
+        flash('注册成功')
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        user = User.query.filter_by(email=email).first()
+        if not user or not check_password_hash(user.password, password):
+            flash('邮箱或密码错误')
+            return redirect(url_for('login'))
+        login_user(user)
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
 
 @app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': '没有文件'}), 400
-    file = request.files['file']
+@login_required
+def upload():
+    if 'skin' not in request.files:
+        flash('没有文件')
+        return redirect(url_for('index'))
+    file = request.files['skin']
     if file.filename == '':
-        return jsonify({'error': '文件名为空'}), 400
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        return jsonify({'success': True})
-    return jsonify({'error': '不允许的文件类型'}), 400
+        flash('请选择文件')
+        return redirect(url_for('index'))
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+    new_skin = Skin(filename=filename, user_id=current_user.id)
+    db.session.add(new_skin)
+    db.session.commit()
+    flash('上传成功')
+    return redirect(url_for('index'))
 
-@app.route('/skins/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+@app.route('/comment/<int:skin_id>', methods=['POST'])
+@login_required
+def comment(skin_id):
+    content = request.form['content']
+    new_comment = Comment(content=content, user_id=current_user.id, skin_id=skin_id)
+    db.session.add(new_comment)
+    db.session.commit()
+    flash('评论已提交')
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    db.create_all()
     app.run(host='0.0.0.0', port=8080)
-
