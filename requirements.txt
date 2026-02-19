@@ -1,5 +1,7 @@
-flask==2.3.3
-flask-login
-flask-sqlalchemy
-flask-mail
+Flask
+Flask-Login
+Flask-Mail
+Flask-SQLAlchemy
 gunicorn
+Werkzeug
+
