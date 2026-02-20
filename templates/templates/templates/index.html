@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>主页</title>
+</head>
+<body>
+    <h1>欢迎来到网站</h1>
+    <a href="/login">登录</a> | <a href="/register">注册</a>
+
+    <h2>评论区</h2>
+    <form action="/comment" method="post">
+        <input type="text" name="username" placeholder="用户名" required>
+        <textarea name="content" placeholder="写点什么..." required></textarea>
+        <button type="submit">提交评论</button>
+    </form>
+
+    <ul>
+        {% for c in comments %}
+        <li><strong>{{ c.username }}:</strong> {{ c.content }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
