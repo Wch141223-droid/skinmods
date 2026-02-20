@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SkinMods</title>
+</head>
+<body>
+    <h1>Welcome to SkinMods</h1>
+
+    {% if current_user.is_authenticated %}
+        <p>Hello {{ current_user.username }} | <a href="/logout">Logout</a></p>
+        <form method="POST">
+            <input type="text" name="content" placeholder="Write a comment">
+            <button type="submit">Post</button>
+        </form>
+    {% else %}
+        <a href="/login">Login</a> |
+        <a href="/register">Register</a>
+    {% endif %}
+
+    <hr>
+
+    {% for comment in comments %}
+        <p><b>{{ comment.username }}</b>: {{ comment.content }}</p>
+    {% endfor %}
+</body>
+</html>
