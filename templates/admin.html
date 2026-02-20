@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>后台管理</title>
+</head>
+<body>
+<h2>添加皮肤</h2>
+
+<form method="post" enctype="multipart/form-data">
+<input name="name" placeholder="皮肤名称"><br><br>
+<input name="price" placeholder="价格"><br><br>
+<input name="description" placeholder="描述"><br><br>
+<input type="file" name="image"><br><br>
+<button type="submit">添加</button>
+</form>
+
+<hr>
+
+<h2>现有皮肤</h2>
+{% for skin in skins %}
+<p>{{ skin.name }} - {{ skin.price }}</p>
+{% endfor %}
+
+</body>
+</html>
