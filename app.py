@@ -8,9 +8,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 
-with app.app_context():
-    db.create_all()
-
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True)
@@ -20,6 +17,9 @@ class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150))
     content = db.Column(db.String(500))
+
+with app.app_context():
+    db.create_all()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -68,5 +68,3 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
