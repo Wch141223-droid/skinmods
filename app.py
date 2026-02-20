@@ -5,20 +5,24 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
+login_manager.login_view = "login"
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True)
-    password = db.Column(db.String(150))
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(150), nullable=False)
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150))
-    content = db.Column(db.String(500))
+    username = db.Column(db.String(150), nullable=False)
+    content = db.Column(db.String(500), nullable=False)
 
 with app.app_context():
+    db.drop_all()
     db.create_all()
 
 @login_manager.user_loader
@@ -68,3 +72,5 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
