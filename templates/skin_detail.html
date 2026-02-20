@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>{{ skin.name }}</title>
+</head>
+<body>
+
+<h2>{{ skin.name }}</h2>
+<img src="/static/{{ skin.image }}" width="300">
+<p>{{ skin.description }}</p>
+<p>价格：{{ skin.price }}</p>
+
+<a href="/buy/{{ skin.id }}">
+<button>购买</button>
+</a>
+
+<hr>
+
+<h3>评论</h3>
+
+<form method="post" action="/comment/{{ skin.id }}">
+<textarea name="content"></textarea><br>
+<button type="submit">发表评论</button>
+</form>
+
+{% for c in comments %}
+<p>{{ c.username }}: {{ c.content }}</p>
+{% endfor %}
+
+</body>
+</html>
