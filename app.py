@@ -1,7 +1,8 @@
 import os
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -9,108 +10,102 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'static/uploads')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True)
-    password = db.Column(db.String(100))
+    password_hash = db.Column(db.String(200))
+    balance = db.Column(db.Integer, default=1000)
     is_admin = db.Column(db.Boolean, default=False)
 
 class Skin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
-    price = db.Column(db.String(50))
-    image = db.Column(db.String(200))
     description = db.Column(db.Text)
+    price = db.Column(db.Integer)
+    image = db.Column(db.String(200))
+    stock = db.Column(db.Integer, default=10)
 
-class Comment(db.Model):
+class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.Text)
-    username = db.Column(db.String(100))
+    user_id = db.Column(db.Integer)
     skin_id = db.Column(db.Integer)
+    price = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
     db.create_all()
+    if not User.query.filter_by(username="admin").first():
+        admin = User(
+            username="admin",
+            password_hash=generate_password_hash("admin123"),
+            is_admin=True
+        )
+        db.session.add(admin)
+        db.session.commit()
 
 @app.route('/')
 def index():
-    if 'username' not in session:
+    if 'user_id' not in session:
         return redirect(url_for('login'))
     skins = Skin.query.all()
-    return render_template('index.html', skins=skins, username=session['username'])
+    user = User.query.get(session['user_id'])
+    return render_template('index.html', skins=skins, user=user)
 
-@app.route('/skin/<int:skin_id>')
-def skin_detail(skin_id):
-    skin = Skin.query.get_or_404(skin_id)
-    comments = Comment.query.filter_by(skin_id=skin_id).all()
-    return render_template('skin_detail.html', skin=skin, comments=comments)
-
-@app.route('/comment/<int:skin_id>', methods=['POST'])
-def comment(skin_id):
-    if 'username' in session:
-        content = request.form['content']
-        new_comment = Comment(content=content, username=session['username'], skin_id=skin_id)
-        db.session.add(new_comment)
-        db.session.commit()
-    return redirect(url_for('skin_detail', skin_id=skin_id))
-
-@app.route('/admin', methods=['GET','POST'])
-def admin():
-    if 'username' not in session:
+@app.route('/buy/<int:skin_id>')
+def buy(skin_id):
+    if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    user = User.query.filter_by(username=session['username']).first()
-    if not user.is_admin:
-        return "无权限"
+    user = User.query.get(session['user_id'])
+    skin = Skin.query.get(skin_id)
 
-    if request.method == 'POST':
-        name = request.form['name']
-        price = request.form['price']
-        description = request.form['description']
-        file = request.files['image']
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    if not skin or skin.stock <= 0:
+        return "商品不存在或库存不足"
 
-        skin = Skin(name=name, price=price, description=description, image="uploads/"+filename)
-        db.session.add(skin)
-        db.session.commit()
+    existing = Order.query.filter_by(user_id=user.id, skin_id=skin.id).first()
+    if existing:
+        return "你已经购买过该皮肤"
 
-    skins = Skin.query.all()
-    return render_template('admin.html', skins=skins)
+    if user.balance < skin.price:
+        return "余额不足"
+
+    user.balance -= skin.price
+    skin.stock -= 1
+
+    order = Order(user_id=user.id, skin_id=skin.id, price=skin.price)
+    db.session.add(order)
+    db.session.commit()
+
+    return redirect(url_for('index'))
 
 @app.route('/register', methods=['GET','POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
-        password = request.form['password']
-        user = User(username=username, password=password)
+        password = generate_password_hash(request.form['password'])
+        user = User(username=username, password_hash=password)
         db.session.add(user)
         db.session.commit()
-        session['username'] = username
+        session['user_id'] = user.id
         return redirect(url_for('index'))
     return render_template('register.html')
 
 @app.route('/login', methods=['GET','POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        user = User.query.filter_by(username=username, password=password).first()
-        if user:
-            session['username'] = username
+        user = User.query.filter_by(username=request.form['username']).first()
+        if user and check_password_hash(user.password_hash, request.form['password']):
+            session['user_id'] = user.id
             return redirect(url_for('index'))
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
-    session.pop('username', None)
+    session.clear()
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
