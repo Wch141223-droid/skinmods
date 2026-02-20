@@ -1,23 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>主页</title>
+<meta charset="UTF-8">
+<title>皮肤商城</title>
+<style>
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:url("/static/bg.jpg") no-repeat center center fixed;
+    background-size:cover;
+}
+
+.navbar{
+    background:rgba(0,0,0,0.8);
+    color:white;
+    padding:15px 30px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.container{
+    width:900px;
+    margin:40px auto;
+    background:rgba(255,255,255,0.95);
+    padding:30px;
+    border-radius:15px;
+}
+
+.skin-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+}
+
+.skin-card{
+    background:#f5f5f5;
+    padding:20px;
+    border-radius:10px;
+    text-align:center;
+}
+
+.comment-box{
+    margin-top:40px;
+}
+
+textarea{
+    width:100%;
+    padding:10px;
+}
+
+button{
+    padding:8px 15px;
+    cursor:pointer;
+}
+</style>
 </head>
 <body>
-    <h1>欢迎来到网站</h1>
-    <a href="/login">登录</a> | <a href="/register">注册</a>
 
-    <h2>评论区</h2>
-    <form action="/comment" method="post">
-        <input type="text" name="username" placeholder="用户名" required>
-        <textarea name="content" placeholder="写点什么..." required></textarea>
-        <button type="submit">提交评论</button>
-    </form>
+<div class="navbar">
+    <div>🔥 我的皮肤商城</div>
+    <div>
+        欢迎 {{ username }}
+        <a href="/logout" style="color:white;margin-left:20px;">退出</a>
+    </div>
+</div>
 
-    <ul>
-        {% for c in comments %}
-        <li><strong>{{ c.username }}:</strong> {{ c.content }}</li>
-        {% endfor %}
-    </ul>
+<div class="container">
+
+<h2>热门皮肤</h2>
+
+<div class="skin-grid">
+    <div class="skin-card">皮肤 1</div>
+    <div class="skin-card">皮肤 2</div>
+    <div class="skin-card">皮肤 3</div>
+</div>
+
+<div class="comment-box">
+<h2>评论区</h2>
+
+<form method="post" action="/comment">
+<textarea name="content" rows="3" placeholder="说点什么..."></textarea>
+<br><br>
+<button type="submit">发布评论</button>
+</form>
+
+<hr>
+
+{% for c in comments %}
+<p><b>{{ c.username }}</b>: {{ c.content }}</p>
+{% endfor %}
+
+</div>
+</div>
+
 </body>
 </html>
