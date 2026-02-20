@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>我的订单</title>
+</head>
+<body>
+
+<h2>我的购买记录</h2>
+
+{% for order in orders %}
+<p>皮肤ID：{{ order.skin_id }} - 价格：{{ order.price }} - 时间：{{ order.created_at }}</p>
+{% endfor %}
+
+</body>
+</html>
