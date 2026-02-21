@@ -1,77 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>皮肤商城</title>
-<style>
-body{
-    margin:0;
-    font-family:Arial;
-    background:url("/static/bg.jpg") no-repeat center center fixed;
-    background-size:cover;
-}
-.nav{
-    background:black;
-    color:white;
-    padding:15px;
-    display:flex;
-    justify-content:space-between;
-}
-.container{
-    width:1000px;
-    margin:30px auto;
-    background:white;
-    padding:30px;
-    border-radius:10px;
-}
-.grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:20px;
-}
-.card{
-    border:1px solid #ddd;
-    padding:15px;
-    text-align:center;
-}
-img{
-    width:100%;
-    height:200px;
-    object-fit:cover;
-}
-button{
-    padding:8px 15px;
-    cursor:pointer;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>SkinMods - 🔥 皮肤商城</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <header>
+        <h1>欢迎来到 SkinMods</h1>
+        <div class="user-bar">
+            {% if current_user.is_authenticated %}
+                <span>余额：{{ current_user.balance }}</span>
+                <a href="{{ url_for('logout') }}" class="button">退出</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="button">登录</a>
+                <a href="{{ url_for('register') }}" class="button">注册</a>
+            {% endif %}
+        </div>
+    </header>
+    <main>
+        <h2>🔥 全部皮肤</h2>
+        <div class="skins">
+            {% for skin in skins %}
+            <div class="skin">
+                <img src="{{ url_for('static', filename=skin.image) }}" alt="{{ skin.name }}">
+                <p>{{ skin.name }} - {{ skin.price }} 💰</p>
+            </div>
+            {% endfor %}
+        </div>
 
-<div class="nav">
-<div>🔥 皮肤商城</div>
-<div>
-余额：{{ user.balance }}
-<a href="/logout" style="color:white;margin-left:20px;">退出</a>
-</div>
-</div>
-
-<div class="container">
-<h2>全部皮肤</h2>
-
-<div class="grid">
-{% for skin in skins %}
-<div class="card">
-<img src="/static/{{ skin.image }}">
-<h3>{{ skin.name }}</h3>
-<p>价格：{{ skin.price }}</p>
-<p>库存：{{ skin.stock }}</p>
-<a href="/buy/{{ skin.id }}">
-<button>购买</button>
-</a>
-</div>
-{% endfor %}
-</div>
-
-</div>
+        <h2>评论区</h2>
+        <div class="comments">
+            {% for comment in comments %}
+            <p><strong>{{ comment.username }}:</strong> {{ comment.content }}</p>
+            {% endfor %}
+        </div>
+    </main>
 </body>
 </html>
